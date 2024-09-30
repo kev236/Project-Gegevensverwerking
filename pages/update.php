@@ -22,6 +22,7 @@
                     <li class="nav-item"><a class="nav-link" href="../index.html">Home</a></li>
                     <li class="nav-item"><a class="nav-link" href="form.php">Gegevens Invullen</a></li>
                     <li class="nav-item"><a class="nav-link" href="view.php">Uw gegevens</a></li>
+                    <li class="nav-item"><a class="nav-link" href="klachten.php">Klachten</a></li>
                 </ul>
             </div>
         </div>
