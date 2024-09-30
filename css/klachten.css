@@ -128,7 +128,6 @@ input[type="submit"]:hover {
     border-radius: 10px;
     text-align: center;
     margin-top: 20px;
-    display: none; /* standaard verborgen, wordt via JS weergegeven */
 }
 
 .success {

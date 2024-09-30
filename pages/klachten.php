@@ -1,65 +1,79 @@
 <?php
-require '../vendor/autoload.php'; // Zorg ervoor dat Composer autoload correct is
+// Laad vereiste bibliotheken
+require '../vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
+// Variabelen voor het tonen van meldingen
+$message = '';
+$message_class = '';
+
+// Functie voor ontsmetten van invoer
+function sanitize_input($data) {
+    return htmlspecialchars(trim($data));
+}
+
+// Laad .env variabelen
 $env = parse_ini_file('../.env');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $naam = $_POST['naam'] ?? '';
-    $email = $_POST['email'] ?? '';
-    $klacht = $_POST['klacht'] ?? '';
+// Controleer of het formulier is ingediend
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    // Ontsmet en sla de ingevoerde gegevens op
+    $naam = sanitize_input($_POST['naam'] ?? '');
+    $email = sanitize_input($_POST['email'] ?? '');
+    $onderwerp = sanitize_input($_POST['onderwerp'] ?? '');
+    $klacht = sanitize_input($_POST['klacht'] ?? '');
 
-    if (!empty($naam) && !empty($email) && !empty($klacht)) {
+    // Controleer of alle vereiste velden zijn ingevuld
+    if (!empty($naam) && !empty($email) && !empty($onderwerp) && !empty($klacht)) {
         // Verzend e-mail met PHPMailer
         $mail = new PHPMailer(true);
         try {
-            // Mail server configuratie
             $mail->isSMTP();
-            $mail->Host = 'smtp.gmail.com'; 
+            $mail->Host = 'smtp.gmail.com';
             $mail->SMTPAuth = true;
-            $mail->Username = $env['SMTP-Username']; // Vervang met je eigen gegevens
-            $mail->Password = $env['SMTP-Password']; // Vervang met je eigen gegevens
+            $mail->Username = $env['SMTP-Username'];
+            $mail->Password = $env['SMTP-Password'];
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
 
-            // Ontvanger en afzender
+            // Afzender en ontvanger instellen
             $mail->setFrom('example@gmail.com', 'Klachtverwerking');
-            $mail->addAddress($email, $naam); 
-            $mail->addCC('example@gmail.com');
+            $mail->addAddress($email, $naam);
 
-            // Onderwerp en bericht
-            $mail->Subject = 'Uw klacht is in behandeling';
+            // E-mailonderwerp en bericht
+            $mail->Subject = $onderwerp;
             $mail->Body = "Geachte $naam,\n\nUw klacht is in behandeling.\n\nDetails van de klacht:\n$klacht";
 
-            // Verzend e-mail
+            // Verstuur de e-mail
             $mail->send();
-            echo '<p class="success">E-mail succesvol verzonden.</p>';
+
+            // Stel succesmelding in
+            $message = "Klacht succesvol verzonden!";
+            $message_class = "success";
         } catch (Exception $e) {
-            echo "<p class='error'>E-mail kon niet worden verzonden. Mailer Error: {$mail->ErrorInfo}</p>";
+            // Stel foutmelding in bij een e-mailfout
+            $message = "Er is een fout opgetreden bij het versturen van uw klacht. Probeer het opnieuw.";
+            $message_class = "error";
         }
 
-        // Logging naar info.log met Monolog
+        // Log de klacht met Monolog
         try {
-            // Maak een nieuwe log aan
             $log = new Logger('klachten');
-            $log->pushHandler(new StreamHandler(__DIR__ . '../klachten/info.log', Logger::INFO));
-
-            // Log de informatie van het formulier
-            $log->info('Nieuwe klacht ontvangen', [
-                'naam' => $naam,
-                'email' => $email,
-                'klacht' => $klacht
-            ]);
+            $log->pushHandler(new StreamHandler(__DIR__ . '/../klachten/info.log', Logger::INFO));
+            $log->info('Nieuwe klacht ontvangen', ['naam' => $naam, 'email' => $email, 'klacht' => $klacht]);
         } catch (Exception $e) {
-            echo "<p class='error'>Fout bij het loggen van klacht: {$e->getMessage()}</p>";
+            // Stel foutmelding in bij loggen
+            $message = "Er is een fout opgetreden bij het verwerken van uw klacht.";
+            $message_class = "error";
         }
     } else {
-        echo '<p class="error">Vul alstublieft alle velden in.</p>';
+        // Stel foutmelding in als velden niet zijn ingevuld
+        $message = "Niet alle velden zijn ingevuld.";
+        $message_class = "error";
     }
 }
 ?>
@@ -76,15 +90,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 
-    <!-- Navbar toevoegen -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="../index.html">Ashura</a>
             <label class="burger" for="burger">
                 <input type="checkbox" id="burger" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span></span> 
-                <span></span> 
-                <span></span> 
+                <span></span>
+                <span></span>
+                <span></span>
             </label>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
@@ -100,6 +114,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Klachtenformulier -->
     <div class="container mt-5 pt-5">
         <h1 class="text-center">Dien uw klacht in</h1>
+
+        <!-- Melding voor succes of fout -->
+        <div id="melding-container">
+            <?php if (!empty($message)): ?>
+                <div class="<?= $message_class ?>"><?= $message ?></div>
+            <?php endif; ?>
+        </div>
+
         <form method="POST" action="">
             <div class="mb-3">
                 <label for="naam" class="form-label">Naam:</label>
